@@ -24,6 +24,7 @@ func main() {
     
 	e.GET("/ping",Ping)
 	e.POST("/register", authHandler.HandleUserRegistration)
+	e.POST("/login",authHandler.HandleUserLogin)
 	e.Logger.Fatal(e.Start(":" + config.Port))
 }
 

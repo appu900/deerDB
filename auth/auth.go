@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/appu900/deerDB/types"
+	"github.com/golang-jwt/jwt/v5"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -24,7 +25,12 @@ type UserRegisterResponse struct {
 	UserID    string `json:"userID"`
 	UserName  string `json:"username"`
 	UserEmail string `json:"useremail"`
+}
 
+type Claims struct {
+	UserID   string `json:"user_id"`
+	Username string `json:"username"`
+	jwt.RegisteredClaims
 }
 
 func ToUserResponse(user *types.User) *UserRegisterResponse {
@@ -88,4 +94,59 @@ func (authService *AuthService) RegisterUser(username, email, password string) (
 		return nil, err
 	}
 	return user, nil
+}
+
+func (authService *AuthService) Login(email, password string) (*types.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var user types.User
+	err := authService.userCollection.FindOne(ctx, bson.M{
+		"email": email,
+	}).Decode(&user)
+	if err != nil {
+		return nil, errors.New("invalid credentials")
+	}
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password)); err != nil {
+		return nil, errors.New("Invalid Password")
+	}
+	return &user, nil
+}
+
+func (authService *AuthService) GenerateToken(user *types.User) (string, error) {
+	claims := &Claims{
+		UserID:   user.ID,
+		Username: user.Username,
+		RegisteredClaims: jwt.RegisteredClaims{
+			ExpiresAt: jwt.NewNumericDate(time.Now().Add(24 * time.Hour)),
+			IssuedAt:  jwt.NewNumericDate(time.Now()),
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
+	return token.SignedString([]byte(authService.config.JWTSecret))
+}
+
+func (authService *AuthService) ValidateToken(tokenString string) (*Claims, error) {
+	token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
+		return []byte(authService.config.JWTSecret), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	if claims, ok := token.Claims.(*Claims); ok && token.Valid {
+		return claims, nil
+	}
+	return nil, errors.New("invalid token")
+}
+
+func (authService *AuthService) GetUserByID(userID string) (*types.User, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	var user types.User
+	err := authService.userCollection.FindOne(ctx, bson.M{"id": userID}).Decode(&user)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+	return &user, nil
 }
