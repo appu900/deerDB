@@ -144,9 +144,10 @@ func (authService *AuthService) GetUserByID(userID string) (*types.User, error) 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var user types.User
-	err := authService.userCollection.FindOne(ctx, bson.M{"id": userID}).Decode(&user)
+	err := authService.userCollection.FindOne(ctx, bson.M{"_id": userID}).Decode(&user)
 	if err != nil {
 		return nil, errors.New("user not found")
 	}
 	return &user, nil
 }
+

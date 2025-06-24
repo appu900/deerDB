@@ -21,14 +21,14 @@ func main() {
 	defer authservice.Close()
 	e := echo.New()
 	authHandler := auth.NewAuthHttpHandler(authservice)
-    
-	e.GET("/ping",Ping)
+
+	e.GET("/ping", Ping)
 	e.POST("/register", authHandler.HandleUserRegistration)
-	e.POST("/login",authHandler.HandleUserLogin)
+	e.POST("/login", authHandler.HandleUserLogin)
+	e.GET("/user/profile", authHandler.HandlerUserProfile, auth.RequireAuth())
 	e.Logger.Fatal(e.Start(":" + config.Port))
 }
 
-
-func Ping( c echo.Context) error {
-	return c.JSON(http.StatusOK,"its working")
+func Ping(c echo.Context) error {
+	return c.JSON(http.StatusOK, "its working")
 }
