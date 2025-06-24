@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/appu900/deerDB/auth"
+	"github.com/appu900/deerDB/db"
 	"github.com/appu900/deerDB/types"
 	"github.com/labstack/echo/v4"
 )
@@ -18,6 +19,7 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
+	db.Testdatabase()
 	defer authservice.Close()
 	e := echo.New()
 	authHandler := auth.NewAuthHttpHandler(authservice)
